@@ -1162,6 +1162,7 @@
 								}
 								const data = await resp.json();
 								sessionStorage.setItem('dre_real', JSON.stringify(data));
+								sessionStorage.setItem('dre_senha', senha);
 								location.reload();
 							} catch (err) {
 								errEl.textContent = err.message;
@@ -1254,7 +1255,7 @@
 					bar.style.cssText =
 						'background:var(--info);color:#fff;text-align:center;font-size:12px;font-weight:500;padding:6px;letter-spacing:.4px';
 					bar.innerHTML =
-						'Dados carregados da sessão &nbsp;·&nbsp; <a href="#" onclick="sessionStorage.removeItem(\'dre_real\');location.reload();return false" style="color:#fff;text-decoration:underline">Sair</a>';
+						'Dados carregados da sessão &nbsp;·&nbsp; <a href="#" onclick="sessionStorage.removeItem(\'dre_real\');sessionStorage.removeItem(\'dre_senha\');location.reload();return false" style="color:#fff;text-decoration:underline">Sair</a>';
 					document.body.insertBefore(bar, document.body.firstChild);
 
 					// Botão "Atualizar dados" na barra de filtros (só na área logada)
@@ -2279,60 +2280,35 @@
 						});
 					}
 
-					t += `\nFaça uma análise financeira em português do Brasil. Destaque tendências de receita e margens ao longo dos períodos, pontos de atenção nos principais centros de custo e destaques positivos. Seja direto e conciso — máximo 5 parágrafos curtos. Não repita os números já listados acima.`;
+					t += `\nFaça uma análise financeira em português do Brasil. Destaque tendências de receita e margens ao longo dos períodos, pontos de atenção nos principais centros de custo e destaques positivos. Seja direto e conciso — máximo 5 parágrafos curtos. Não repita os números já listados acima. devolva a resposta em formato de tags HTML`;
 					return t;
 				}
 
 				async function _callClaude(prompt) {
-					const key = API_KEY || sessionStorage.getItem('dre_claude_key') || '';
-					const resp = await fetch('https://api.anthropic.com/v1/messages', {
+					if (location.protocol === 'file:') throw new Error('file://');
+					const senha = sessionStorage.getItem('dre_senha') || '';
+					const resp = await fetch('/api/analyze', {
 						method: 'POST',
-						headers: {
-							'x-api-key': key,
-							'anthropic-version': '2023-06-01',
-							'content-type': 'application/json',
-							'anthropic-dangerous-direct-browser-ipc': 'true',
-						},
-						body: JSON.stringify({
-							model: 'claude-3-5-haiku-latest',
-							max_tokens: 3500,
-							messages: [{ role: 'user', content: prompt }],
-						}),
+						headers: { 'Content-Type': 'application/json', 'x-dre-password': senha },
+						body: JSON.stringify({ prompt }),
 					});
 					if (!resp.ok) {
 						const err = await resp.json().catch(() => ({}));
-						throw new Error(err.error?.message || `HTTP ${resp.status}`);
+						throw new Error(err.error || `HTTP ${resp.status}`);
 					}
-					return (await resp.json()).content[0].text;
+					return (await resp.json()).text;
 				}
 
 				function _showClaudeButton(el, prompt) {
-					const savedKey = sessionStorage.getItem('dre_claude_key') || '';
 					el.innerHTML = `
-						<div style="background:var(--bg3);border:0.5px solid var(--border);border-radius:6px;padding:12px 14px;margin-bottom:14px">
-							<p style="font-size:11px;color:var(--text2);margin-bottom:8px;font-weight:500">Análise automática via API do Claude:</p>
-							<div style="display:flex;gap:6px;margin-bottom:6px">
-								<input type="password" id="ai-key-input" placeholder="Chave API Claude (sk-ant-…)" value="${savedKey}"
-									style="flex:1;padding:6px 10px;background:var(--bg);border:0.5px solid var(--border2);border-radius:5px;font-size:12px;color:var(--text);outline:none">
-								<button type="button" id="ai-key-save"
-									style="padding:6px 14px;background:var(--info);color:#fff;border:none;border-radius:5px;font-size:12px;font-weight:500;cursor:pointer">Analisar →</button>
-							</div>
-							<p style="font-size:10px;color:var(--text3)">A chave fica apenas nesta sessão do browser e não é enviada a nenhum servidor externo além da API da Anthropic.</p>
-						</div>
-						<span class="ai-muted" style="display:block;margin-bottom:10px">Ou abra o Claude.ai com os dados prontos para colar:</span>
+						<span class="ai-muted" style="display:block;margin-bottom:12px">
+							Análise automática indisponível (verifique a configuração do servidor).<br>
+							Clique abaixo para abrir o Claude.ai com os dados prontos — basta colar e enviar.
+						</span>
 						<button type="button" id="ai-open-btn" style="padding:8px 18px;background:var(--info);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;letter-spacing:.3px">
 							✦ Analisar no Claude.ai →
 						</button>
 						<span id="ai-copied" style="display:none;font-size:11px;color:var(--delta-pos);margin-left:10px">Prompt copiado! Cole no Claude.ai.</span>`;
-					document.getElementById('ai-key-save').addEventListener('click', () => {
-						const key = document.getElementById('ai-key-input').value.trim();
-						if (!key) return;
-						sessionStorage.setItem('dre_claude_key', key);
-						triggerAnalysis(true);
-					});
-					document.getElementById('ai-key-input').addEventListener('keydown', (e) => {
-						if (e.key === 'Enter') document.getElementById('ai-key-save').click();
-					});
 					document.getElementById('ai-open-btn').addEventListener('click', () => {
 						navigator.clipboard.writeText(prompt).catch(() => {});
 						document.getElementById('ai-copied').style.display = 'inline';
@@ -2356,12 +2332,6 @@
 					const tot = calcPeriod(mi, mf, seg);
 					const prompt = _buildPrompt(mi, mf, per, seg, pd, tot);
 
-					const effectiveKey = API_KEY || sessionStorage.getItem('dre_claude_key') || '';
-					if (!effectiveKey) {
-						_showClaudeButton(el, prompt);
-						return;
-					}
-
 					const key = _aiKey();
 					if (!force && _aiCache.has(key)) {
 						el.innerHTML = _aiCache.get(key);
@@ -2372,16 +2342,13 @@
 
 					try {
 						const txt = await _callClaude(prompt);
-						const html = txt
-							.trim()
-							.split(/\n+/)
-							.filter((l) => l.trim())
-							.map((l) => `<p>${l}</p>`)
-							.join('');
+						// Extrai HTML do bloco markdown ```html ... ```
+						const match = txt.match(/```html\s*([\s\S]*?)\s*```/);
+						const html = match ? match[1] : txt;
 						_aiCache.set(key, html);
 						el.innerHTML = html;
 					} catch (e) {
-						// CORS (file://) ou outro erro de rede → fallback para botão
+						// Erro de rede ou servidor → fallback para botão
 						_showClaudeButton(el, prompt);
 					}
 				}
