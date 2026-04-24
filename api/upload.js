@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método não permitido' });
 
   const senha = req.headers['x-dre-password'] || '';
-  if (!process.env.DRE_PASSWORD || senha !== process.env.DRE_PASSWORD)
+  if (!process.env.DRE_PASSWORD_UPLOAD || senha !== process.env.DRE_PASSWORD_UPLOAD)
     return res.status(401).json({ error: 'Senha inválida' });
 
   const data = req.body;

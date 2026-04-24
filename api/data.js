@@ -8,7 +8,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const senha = req.headers['x-dre-password'] || '';
-  if (!process.env.DRE_PASSWORD || senha !== process.env.DRE_PASSWORD)
+  if (!process.env.DRE_PASSWORD_READ || senha !== process.env.DRE_PASSWORD_READ)
     return res.status(401).json({ error: 'Senha inválida' });
 
   const raw = await kv.get('dre_data');
