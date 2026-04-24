@@ -1,0 +1,24 @@
+# Arquivos Excel — contêm dados financeiros reais
+*.xlsm
+*.xlsx
+*.xls
+~$*
+
+# JSON de dados gerado pelo VBA — nunca commitar
+dre_data.json
+
+# HTMLs exportados com dados reais embutidos (snapshots locais)
+# O arquivo dre_interativa.html é o template (DRE_DATA = null) e PODE ser commitado
+dre_interativa-*.html
+
+# Variáveis de ambiente
+.env
+.env.local
+.env*.local
+
+# Vercel (gerado pelo CLI)
+.vercel
+
+# macOS
+.DS_Store
+**/.DS_Store
