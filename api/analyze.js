@@ -7,7 +7,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método não permitido' });
 
   const senha = req.headers['x-dre-password'] || '';
-  if (!process.env.DRE_PASSWORD || senha !== process.env.DRE_PASSWORD)
+  if (!process.env.DRE_PASSWORD_READ || senha !== process.env.DRE_PASSWORD_READ)
     return res.status(401).json({ error: 'Senha inválida' });
 
   if (!process.env.ANTHROPIC_API_KEY)
