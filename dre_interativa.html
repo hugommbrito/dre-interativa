@@ -966,6 +966,25 @@
       <p id="senhaErr" style="font-size:11px;color:var(--delta-neg);margin-top:8px;display:none"></p>
     </div>
 
+    <div style="background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius);padding:22px 20px;${isFile ? 'opacity:.55' : ''}">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--text2);margin-bottom:10px">Atualizar dados do servidor</div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.6">${isFile ? 'Disponível apenas na versão web (Vercel). Abra a URL do deploy.' : 'Envie o <code>dre_data.json</code> gerado pelo VBA para o servidor.'}</p>
+      <label style="display:block;width:100%;padding:9px 14px;background:var(--bg);border:0.5px solid var(--border2);border-radius:6px;font-size:12px;font-weight:500;cursor:${isFile ? 'not-allowed' : 'pointer'};text-align:center;box-sizing:border-box;margin-bottom:8px">
+        <span id="uploadLabel">Selecionar dre_data.json…</span>
+        <input id="uploadInput" type="file" accept=".json,application/json" style="display:none" ${isFile ? 'disabled' : ''}>
+      </label>
+      <div style="display:flex;gap:6px">
+        <input id="uploadSenhaInput" type="password" placeholder="Senha" ${isFile ? 'disabled' : ''}
+          style="flex:1;padding:8px 10px;background:var(--bg);border:0.5px solid var(--border2);border-radius:6px;font-size:12px;color:var(--text);outline:none">
+        <button id="uploadBtn" ${isFile ? 'disabled' : ''}
+          style="padding:8px 14px;background:var(--bg);color:var(--text);border:0.5px solid var(--border2);border-radius:6px;font-size:12px;font-weight:500;cursor:${isFile ? 'not-allowed' : 'pointer'}">
+          Enviar
+        </button>
+      </div>
+      <p id="uploadErr" style="font-size:11px;color:var(--delta-neg);margin-top:8px;display:none"></p>
+      <p id="uploadOk" style="font-size:11px;color:var(--ok-text);margin-top:8px;display:none">Dados enviados com sucesso!</p>
+    </div>
+
   </div>
 </div>`;
 
@@ -1020,6 +1039,59 @@
 						document.getElementById('senhaBtn').addEventListener('click', tentarLogin);
 						document.getElementById('senhaInput').addEventListener('keydown', function (e) {
 							if (e.key === 'Enter') tentarLogin();
+						});
+
+						// Upload de dre_data.json para o servidor
+						let uploadFileData = null;
+						document.getElementById('uploadInput').addEventListener('change', function (e) {
+							const file = e.target.files[0];
+							if (!file) return;
+							document.getElementById('uploadLabel').textContent = file.name;
+							const reader = new FileReader();
+							reader.onload = function (ev) {
+								try {
+									uploadFileData = JSON.parse(ev.target.result);
+									if (!uploadFileData.entradas || !uploadFileData.saidas) throw new Error('Estrutura inválida');
+									document.getElementById('uploadErr').style.display = 'none';
+								} catch (err) {
+									uploadFileData = null;
+									const el = document.getElementById('uploadErr');
+									el.textContent = 'Arquivo inválido: ' + err.message;
+									el.style.display = 'block';
+								}
+							};
+							reader.readAsText(file);
+						});
+
+						document.getElementById('uploadBtn').addEventListener('click', async function () {
+							const senha = document.getElementById('uploadSenhaInput').value;
+							const errEl = document.getElementById('uploadErr');
+							const okEl = document.getElementById('uploadOk');
+							const btn = document.getElementById('uploadBtn');
+							errEl.style.display = 'none';
+							okEl.style.display = 'none';
+							if (!uploadFileData) { errEl.textContent = 'Selecione um arquivo primeiro.'; errEl.style.display = 'block'; return; }
+							if (!senha) { errEl.textContent = 'Informe a senha.'; errEl.style.display = 'block'; return; }
+							btn.textContent = '…';
+							btn.disabled = true;
+							try {
+								const resp = await fetch('/api/upload', {
+									method: 'POST',
+									headers: { 'Content-Type': 'application/json', 'x-dre-password': senha },
+									body: JSON.stringify(uploadFileData),
+								});
+								if (!resp.ok) {
+									const e = await resp.json().catch(() => ({}));
+									throw new Error(e.error || `HTTP ${resp.status}`);
+								}
+								okEl.style.display = 'block';
+							} catch (err) {
+								errEl.textContent = err.message;
+								errEl.style.display = 'block';
+							} finally {
+								btn.textContent = 'Enviar';
+								btn.disabled = false;
+							}
 						});
 					}
 

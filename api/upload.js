@@ -2,21 +2,20 @@ import { kv } from '@vercel/kv';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-dre-password');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Método não permitido' });
 
   const senha = req.headers['x-dre-password'] || '';
   if (!process.env.DRE_PASSWORD || senha !== process.env.DRE_PASSWORD)
     return res.status(401).json({ error: 'Senha inválida' });
 
-  const raw = await kv.get('dre_data');
-  if (!raw) return res.status(404).json({ error: 'Sem dados no servidor — faça o upload do dre_data.json' });
+  const data = req.body;
+  if (!data || !data.entradas || !data.saidas)
+    return res.status(400).json({ error: 'JSON inválido — campos entradas e saidas são obrigatórios' });
 
-  try {
-    res.status(200).json(typeof raw === 'string' ? JSON.parse(raw) : raw);
-  } catch {
-    res.status(500).json({ error: 'Dados corrompidos no servidor — faça o upload novamente' });
-  }
+  await kv.set('dre_data', JSON.stringify(data));
+  return res.status(200).json({ ok: true });
 }

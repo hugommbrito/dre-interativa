@@ -6,6 +6,7 @@
 
 # JSON de dados gerado pelo VBA — nunca commitar
 dre_data.json
+dre_data-*.json
 
 # HTMLs exportados com dados reais embutidos (snapshots locais)
 # O arquivo dre_interativa.html é o template (DRE_DATA = null) e PODE ser commitado
