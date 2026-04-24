@@ -109,6 +109,117 @@
 				font-weight: 500;
 				letter-spacing: 0.02em;
 			}
+			.header-disclaimer {
+				font-size: 11px;
+				color: var(--text3);
+				font-style: italic;
+				max-width: 520px;
+				text-align: right;
+				line-height: 1.45;
+			}
+			.header-left {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+				flex-wrap: wrap;
+			}
+
+			.modal-overlay {
+				display: none;
+				position: fixed;
+				inset: 0;
+				background: rgba(0, 0, 0, 0.5);
+				z-index: 200;
+				align-items: center;
+				justify-content: center;
+			}
+			.modal-box {
+				background: var(--bg);
+				border: 0.5px solid var(--border2);
+				border-radius: var(--radius);
+				padding: 28px 24px;
+				min-width: 340px;
+				max-width: 440px;
+				width: 90%;
+			}
+			.modal-hd {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				margin-bottom: 16px;
+			}
+			.modal-title {
+				font-size: 14px;
+				font-weight: 500;
+			}
+			.modal-close {
+				background: none;
+				border: none;
+				cursor: pointer;
+				font-size: 20px;
+				color: var(--text3);
+				line-height: 1;
+			}
+			.modal-desc {
+				font-size: 12px;
+				color: var(--text2);
+				margin-bottom: 16px;
+				line-height: 1.6;
+			}
+			.modal-desc code {
+				font-family: var(--mono);
+				font-size: 11px;
+				background: var(--bg2);
+				padding: 1px 5px;
+				border-radius: 3px;
+			}
+			.modal-file-lbl {
+				display: block;
+				padding: 9px 14px;
+				background: var(--bg2);
+				border: 0.5px solid var(--border2);
+				border-radius: 6px;
+				font-size: 12px;
+				font-weight: 500;
+				cursor: pointer;
+				text-align: center;
+				margin-bottom: 10px;
+			}
+			.modal-row {
+				display: flex;
+				gap: 6px;
+				margin-bottom: 10px;
+			}
+			.modal-pw {
+				flex: 1;
+				padding: 8px 10px;
+				background: var(--bg);
+				border: 0.5px solid var(--border2);
+				border-radius: 6px;
+				font-size: 12px;
+				color: var(--text);
+				outline: none;
+			}
+			.modal-submit {
+				padding: 8px 14px;
+				background: var(--info);
+				color: #fff;
+				border: none;
+				border-radius: 6px;
+				font-size: 12px;
+				font-weight: 500;
+				cursor: pointer;
+			}
+			.modal-err {
+				font-size: 11px;
+				color: var(--delta-neg);
+				display: none;
+			}
+			.modal-ok {
+				font-size: 11px;
+				color: var(--ok-text);
+				display: none;
+			}
 
 			.filters {
 				padding: 12px 28px;
@@ -497,8 +608,11 @@
 	</head>
 	<body>
 		<header>
-			<h1>DRE Interativa</h1>
-			<span id="gb" class="gen-badge">dados reais</span>
+			<div class="header-left">
+				<h1>DRE Interativa</h1>
+				<span id="gb" class="gen-badge">dados reais</span>
+			</div>
+			<p class="header-disclaimer">⚠ Os dados podem conter pequenas divergências e variações. Utilize apenas como suporte à tomada de decisão — não substitui relatórios ou documentos oficiais.</p>
 		</header>
 
 		<div class="filters">
@@ -530,6 +644,26 @@
 		<footer>
 			Regime de competência · Consolidado do Grupo · <span id="ft">—</span>
 		</footer>
+
+		<div id="upload-modal" class="modal-overlay">
+			<div class="modal-box">
+				<div class="modal-hd">
+					<h3 class="modal-title">Atualizar dados do servidor</h3>
+					<button type="button" class="modal-close" onclick="document.getElementById('upload-modal').style.display='none'">×</button>
+				</div>
+				<p class="modal-desc">Selecione o <code>dre_data.json</code> gerado pelo VBA e informe a senha para atualizar os dados no servidor.</p>
+				<label class="modal-file-lbl">
+					<span id="modal-upload-label">Selecionar dre_data.json…</span>
+					<input id="modal-upload-input" type="file" accept=".json,application/json" style="display:none">
+				</label>
+				<div class="modal-row">
+					<input id="modal-upload-senha" type="password" placeholder="Senha" class="modal-pw">
+					<button type="button" id="modal-upload-btn" class="modal-submit">Enviar</button>
+				</div>
+				<p id="modal-upload-err" class="modal-err"></p>
+				<p id="modal-upload-ok" class="modal-ok">Dados enviados com sucesso!</p>
+			</div>
+		</div>
 
 		<div id="tt"></div>
 
@@ -1122,6 +1256,72 @@
 					bar.innerHTML =
 						'Dados carregados da sessão &nbsp;·&nbsp; <a href="#" onclick="sessionStorage.removeItem(\'dre_real\');location.reload();return false" style="color:#fff;text-decoration:underline">Sair</a>';
 					document.body.insertBefore(bar, document.body.firstChild);
+
+					// Botão "Atualizar dados" na barra de filtros (só na área logada)
+					const filtersDiv = document.querySelector('.filters');
+					const btnWrap = document.createElement('span');
+					btnWrap.style.cssText = 'display:flex;align-items:center;gap:6px;margin-left:auto';
+					btnWrap.innerHTML = '<span class="vsep"></span><button type="button" id="btn-atualizar-dados" style="font-size:11px;padding:5px 12px;background:var(--bg);border:0.5px solid var(--border2);border-radius:5px;cursor:pointer;color:var(--text2)">↑ Atualizar dados</button>';
+					filtersDiv.appendChild(btnWrap);
+
+					document.getElementById('btn-atualizar-dados').addEventListener('click', () => {
+						document.getElementById('upload-modal').style.display = 'flex';
+					});
+					document.getElementById('upload-modal').addEventListener('click', function (e) {
+						if (e.target === this) this.style.display = 'none';
+					});
+
+					let _modalUploadData = null;
+					document.getElementById('modal-upload-input').addEventListener('change', function (e) {
+						const file = e.target.files[0];
+						if (!file) return;
+						document.getElementById('modal-upload-label').textContent = file.name;
+						const reader = new FileReader();
+						reader.onload = function (ev) {
+							try {
+								_modalUploadData = JSON.parse(ev.target.result);
+								if (!_modalUploadData.entradas || !_modalUploadData.saidas) throw new Error('Estrutura inválida');
+								document.getElementById('modal-upload-err').style.display = 'none';
+							} catch (err) {
+								_modalUploadData = null;
+								const el = document.getElementById('modal-upload-err');
+								el.textContent = 'Arquivo inválido: ' + err.message;
+								el.style.display = 'block';
+							}
+						};
+						reader.readAsText(file);
+					});
+
+					document.getElementById('modal-upload-btn').addEventListener('click', async function () {
+						const senha = document.getElementById('modal-upload-senha').value;
+						const errEl = document.getElementById('modal-upload-err');
+						const okEl = document.getElementById('modal-upload-ok');
+						const btn = document.getElementById('modal-upload-btn');
+						errEl.style.display = 'none';
+						okEl.style.display = 'none';
+						if (!_modalUploadData) { errEl.textContent = 'Selecione um arquivo primeiro.'; errEl.style.display = 'block'; return; }
+						if (!senha) { errEl.textContent = 'Informe a senha.'; errEl.style.display = 'block'; return; }
+						btn.textContent = '…';
+						btn.disabled = true;
+						try {
+							const resp = await fetch('/api/upload', {
+								method: 'POST',
+								headers: { 'Content-Type': 'application/json', 'x-dre-password': senha },
+								body: JSON.stringify(_modalUploadData),
+							});
+							if (!resp.ok) {
+								const e = await resp.json().catch(() => ({}));
+								throw new Error(e.error || `HTTP ${resp.status}`);
+							}
+							okEl.style.display = 'block';
+						} catch (err) {
+							errEl.textContent = err.message;
+							errEl.style.display = 'block';
+						} finally {
+							btn.textContent = 'Enviar';
+							btn.disabled = false;
+						}
+					});
 				}
 
 				// ----- HELPERS DE FORMATAÇÃO ----------------------------------------
@@ -2047,15 +2247,48 @@
 						t += `${p.l}: RB=R$${N(p.d.rb)} | RL=R$${N(p.d.rl)} | Mg.Bruta=${P(p.d.lb / r1)} | EBITDA=${P(p.d.ebt / r1)} | LL=R$${N(p.d.ll)}\n`;
 					});
 
-					t += `\nFaça uma análise financeira em português do Brasil. Destaque tendências de receita e margens ao longo dos períodos, pontos de atenção e destaques positivos. Seja direto e conciso — máximo 4 parágrafos curtos. Não repita os números já listados acima.`;
+					// Detalhamento até nível de centro de custo
+					const RUBRICA_LBL_LOCAL = {
+						csp: 'Custo dos Serviços (CSP)',
+						pes: 'Pessoal & Benefícios',
+						com: 'Comercial & Marketing',
+						ga: 'G&A',
+						ti: 'Equipamentos & TI',
+						da: 'Depreciação & Amortização',
+						rf: 'Resultado Financeiro',
+					};
+					const RID_ALL_LOCAL = ['csp', 'pes', 'com', 'ga', 'ti', 'da', 'rf'];
+					const hasDetail = RID_ALL_LOCAL.some((rid) => tot.rv[rid] && tot.rv[rid].t > 0);
+					if (hasDetail) {
+						t += `\nDETALHAMENTO POR RUBRICA — período consolidado (${MS[mi]} a ${MS[mf]}):\n`;
+						RID_ALL_LOCAL.forEach((rid) => {
+							const r = tot.rv[rid];
+							if (!r || r.t === 0) return;
+							t += `${RUBRICA_LBL_LOCAL[rid]}: R$${N(r.t)} (${P(r.t / rl1)} da RL)\n`;
+							const grupos = Object.keys(r.gv).sort((a, b) => r.gv[b].t - r.gv[a].t);
+							grupos.forEach((gl) => {
+								const g = r.gv[gl];
+								if (!g || g.t === 0) return;
+								t += `  · ${gl}: R$${N(g.t)}\n`;
+								const ccs = Object.keys(g.cv).sort((a, b) => g.cv[b] - g.cv[a]);
+								ccs.forEach((cl) => {
+									if (!g.cv[cl] || g.cv[cl] === 0) return;
+									t += `    – ${cl}: R$${N(g.cv[cl])}\n`;
+								});
+							});
+						});
+					}
+
+					t += `\nFaça uma análise financeira em português do Brasil. Destaque tendências de receita e margens ao longo dos períodos, pontos de atenção nos principais centros de custo e destaques positivos. Seja direto e conciso — máximo 5 parágrafos curtos. Não repita os números já listados acima.`;
 					return t;
 				}
 
 				async function _callClaude(prompt) {
+					const key = API_KEY || sessionStorage.getItem('dre_claude_key') || '';
 					const resp = await fetch('https://api.anthropic.com/v1/messages', {
 						method: 'POST',
 						headers: {
-							'x-api-key': API_KEY,
+							'x-api-key': key,
 							'anthropic-version': '2023-06-01',
 							'content-type': 'application/json',
 							'anthropic-dangerous-direct-browser-ipc': 'true',
@@ -2074,15 +2307,32 @@
 				}
 
 				function _showClaudeButton(el, prompt) {
+					const savedKey = sessionStorage.getItem('dre_claude_key') || '';
 					el.innerHTML = `
-						<span class="ai-muted" style="display:block;margin-bottom:12px">
-							A análise automática não está disponível nesta configuração.<br>
-							Clique no botão abaixo para abrir o Claude.ai com os dados prontos — basta colar e enviar.
-						</span>
-						<button id="ai-open-btn" style="padding:8px 18px;background:var(--info);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;letter-spacing:.3px">
+						<div style="background:var(--bg3);border:0.5px solid var(--border);border-radius:6px;padding:12px 14px;margin-bottom:14px">
+							<p style="font-size:11px;color:var(--text2);margin-bottom:8px;font-weight:500">Análise automática via API do Claude:</p>
+							<div style="display:flex;gap:6px;margin-bottom:6px">
+								<input type="password" id="ai-key-input" placeholder="Chave API Claude (sk-ant-…)" value="${savedKey}"
+									style="flex:1;padding:6px 10px;background:var(--bg);border:0.5px solid var(--border2);border-radius:5px;font-size:12px;color:var(--text);outline:none">
+								<button type="button" id="ai-key-save"
+									style="padding:6px 14px;background:var(--info);color:#fff;border:none;border-radius:5px;font-size:12px;font-weight:500;cursor:pointer">Analisar →</button>
+							</div>
+							<p style="font-size:10px;color:var(--text3)">A chave fica apenas nesta sessão do browser e não é enviada a nenhum servidor externo além da API da Anthropic.</p>
+						</div>
+						<span class="ai-muted" style="display:block;margin-bottom:10px">Ou abra o Claude.ai com os dados prontos para colar:</span>
+						<button type="button" id="ai-open-btn" style="padding:8px 18px;background:var(--info);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;letter-spacing:.3px">
 							✦ Analisar no Claude.ai →
 						</button>
 						<span id="ai-copied" style="display:none;font-size:11px;color:var(--delta-pos);margin-left:10px">Prompt copiado! Cole no Claude.ai.</span>`;
+					document.getElementById('ai-key-save').addEventListener('click', () => {
+						const key = document.getElementById('ai-key-input').value.trim();
+						if (!key) return;
+						sessionStorage.setItem('dre_claude_key', key);
+						triggerAnalysis(true);
+					});
+					document.getElementById('ai-key-input').addEventListener('keydown', (e) => {
+						if (e.key === 'Enter') document.getElementById('ai-key-save').click();
+					});
 					document.getElementById('ai-open-btn').addEventListener('click', () => {
 						navigator.clipboard.writeText(prompt).catch(() => {});
 						document.getElementById('ai-copied').style.display = 'inline';
@@ -2106,7 +2356,8 @@
 					const tot = calcPeriod(mi, mf, seg);
 					const prompt = _buildPrompt(mi, mf, per, seg, pd, tot);
 
-					if (!API_KEY) {
+					const effectiveKey = API_KEY || sessionStorage.getItem('dre_claude_key') || '';
+					if (!effectiveKey) {
 						_showClaudeButton(el, prompt);
 						return;
 					}
