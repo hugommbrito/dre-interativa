@@ -248,7 +248,7 @@ Nenhum servidor, nenhum banco. Tudo local.
 
 ## Deploy na Vercel
 
-O repositório GitHub pode ser **público** — o template HTML não contém dados financeiros. Os dados reais ficam em variáveis de ambiente configuradas no painel da Vercel, fora do código.
+O repositório GitHub pode ser **público** — o template HTML não contém dados financeiros. Os dados reais ficam armazenados no Redis (Vercel KV / Upstash) e são protegidos por senha.
 
 ### Estrutura do repositório
 
@@ -256,40 +256,40 @@ O repositório GitHub pode ser **público** — o template HTML não contém dad
 /
 ├── dre_interativa.html   ← template (DRE_DATA = null)
 ├── api/
-│   └── data.js           ← serverless function (serve dados após autenticação)
+│   ├── data.js           ← GET — serve dados após autenticação (senha de leitura)
+│   ├── upload.js         ← POST — recebe e persiste novo dre_data.json (senha de upload)
+│   └── analyze.js        ← POST — proxy para API Anthropic (análise IA)
 └── vercel.json           ← roteamento
 ```
 
 ### Setup inicial (uma vez)
 
 1. Faça push do repositório para o GitHub e conecte-o à Vercel.
-2. No painel da Vercel → **Settings → Environment Variables**, crie:
+2. No painel da Vercel → **Storage**, crie um banco **KV (Upstash Redis)** e vincule ao projeto. As variáveis `KV_REST_API_URL`, `KV_REST_API_TOKEN` e `KV_REST_API_READ_ONLY_TOKEN` são preenchidas automaticamente.
+3. No painel da Vercel → **Settings → Environment Variables**, crie:
 
-| Variável        | Descrição                                          |
-|-----------------|----------------------------------------------------|
-| `DRE_PASSWORD`  | Senha usada pelo diretor para acessar os dados     |
-| `DRE_DATA_JSON` | Conteúdo do `dre_data.json` gerado pelo VBA        |
+| Variável             | Descrição                                                    |
+|----------------------|--------------------------------------------------------------|
+| `DRE_PASSWORD_READ`  | Senha para acessar os dados reais no browser                 |
+| `DRE_PASSWORD_UPLOAD`| Senha para enviar novos dados ao servidor (pode ser diferente)|
+| `ANTHROPIC_API_KEY`  | Chave da API Anthropic para habilitar a análise IA           |
 
-3. Faça o primeiro deploy. A URL estará disponível para acesso.
+4. Faça o primeiro deploy. A URL estará disponível para acesso.
 
 ### Atualizar dados na Vercel
 
-1. Rode a macro `ExportarDRE` no Excel.
-2. Abra o arquivo `dre_data.json` gerado (configure `json_output` na aba Config).
-3. Copie **todo o conteúdo** do arquivo.
-4. No painel da Vercel → **Settings → Environment Variables** → edite `DRE_DATA_JSON` → cole o conteúdo.
-5. Clique em **Save** e aguarde o redeploy automático (~30 segundos).
-
-> **Limite de tamanho:** a Vercel suporta até ~64 KB por variável de ambiente.
-> Para bases maiores, entre em contato para configurar o Vercel Edge Config
-> (suporta até 500 KB por item, disponível no plano gratuito).
+1. Rode a macro `ExportarDRE` no Excel (configure `json_output` na aba Config para gerar o `dre_data.json`).
+2. No browser, acesse a URL da Vercel e entre com a **senha de leitura**.
+3. Clique no botão **"Atualizar dados"** (disponível no banner da área logada).
+4. Selecione o `dre_data.json` gerado e informe a **senha de upload**.
+5. Confirme — os dados são enviados para o Redis e ficam disponíveis imediatamente, sem redeploy.
 
 ### Tela de acesso
 
-Ao abrir a URL da Vercel, o diretor vê três opções:
+Ao abrir a URL da Vercel, o usuário vê três opções:
 
 | Opção | Descrição |
 |-------|-----------|
 | **Demonstração** | Dados fictícios, sem senha, disponível para qualquer visitante |
-| **Carregar arquivo** | Seleciona o `dre_data.json` local — dados ficam apenas na sessão do browser |
-| **Acessar dados reais** | Insere a `DRE_PASSWORD` para buscar os dados do servidor |
+| **Carregar arquivo** | Seleciona o `dre_data.json` local — dados ficam apenas nesta sessão do browser |
+| **Acessar dados reais** | Insere a `DRE_PASSWORD_READ` para buscar os dados do servidor |
